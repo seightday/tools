@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="sms" basedir="." default="warDir">
+	<!-- 项目路径 -->
+	<property name="project.dir" value="" />
+	<!-- web 应用的名字，也是打包后war的名字 -->
+	<property name="web.name" value="webname" />
+	<!-- java源代码目录 -->
+	<property name="src.dir" location="${project.dir}/src" />
+	<!-- web 根目录 -->
+	<property name="web.root" value="${project.dir}/WebRoot" />
+	<property name="web.inf" location="${web.root}/WEB-INF" />
+	<property name="web.lib" location="${web.inf}/lib" />
+	
+	<!-- 构建目录 -->
+	<property name="build.dir" location="${project.dir}/build" />
+	<!-- class文件目录 -->
+	<property name="build.classes" location="${build.dir}/classes" />
+	<!-- 打包目录 -->
+	<property name="build.war" location="${build.dir}/war" />
+
+	<!-- tomcat根目录 -->
+	<property name="tomcat.home" location="D:/Program Files/apache-tomcat-6.0.43" />
+	<property name="tomcat.lib" location="${tomcat.home}/lib" />
+
+	<!-- 加载环境变量 -->
+	<property environment="env" />
+
+	<!-- 定义编译时的classpath -->
+	<path id="compile.path">
+		<fileset dir="${web.lib}" includes="*.jar" />
+		<fileset dir="${tomcat.lib}">
+			<include name="*.jar" />
+		</fileset>
+	</path>
+
+	<target name="clean" description="清理">
+		<delete dir="${build.dir}" />
+		<!--
+<delete dir="${env.tomcat_home}/webapps/${web.name}" />
+		<delete file="${env.tomcat_home}/webapps/${web.name}.war" />
+-->
+		<delete dir="${web.root}/WEB-INF/classes"></delete>
+		<echo>清理完成！</echo>
+	</target>
+
+	<target name="init" description="初始化" depends="clean">
+		<mkdir dir="${build.dir}" />
+		<mkdir dir="${build.classes}" />
+		<mkdir dir="${build.war}" />
+		<echo>初始化完成！</echo>
+	</target>
+
+	<target name="compile" depends="init" description="编译">
+		<!-- executable="C:/Program Files/Java/jdk1.6.0_45/bin/javac.exe" -->
+		<javac 
+			destdir="${build.classes}" srcdir="${src.dir}" includeantruntime="false"
+			fork="true">
+			<compilerarg line="-encoding UTF-8 -Xlint:none" /><!-- -Xlint:unchecked,rawtypes-->
+			<classpath refid="compile.path" />
+		</javac>
+		<echo message="编译完成！" />
+	</target>
+
+
+	<target name="warDir" depends="compile" description="打包war文件">
+	    <copy todir="${build.war}" includeemptydirs="true">
+	      <fileset dir="${web.root}">
+	        <include name="**/*.*" />
+	      </fileset>
+	    </copy>
+	    <copy todir="${build.war}/WEB-INF/classes">
+	      <fileset dir="${build.classes}">
+	        <include name="**/*.*"/>
+	      </fileset>
+	    </copy>
+	    <copy todir="${build.war}/WEB-INF/classes">
+	      <fileset dir="${src.dir}">
+	        <exclude name="**/*.java"/>
+	      </fileset>
+	    </copy>
+	    <copy todir="${build.war}/WEB-INF/classes">
+	      <fileset dir="${web.inf}/config">
+	        <include name="**/*.*"/>
+	      </fileset>
+	    </copy>
+		
+		<echo>复制到warDir完成！</echo>
+	</target>
+	<target name="war" depends="compile" description="打包war文件">
+		<war destfile="${build.war}/${web.name}.war">
+			<fileset dir="${web.root}" includes="**/*.*" />
+			<lib dir="${web.lib}" />
+			<webinf dir="${web.inf}" />
+			<classes dir="${build.classes}" />
+		</war>
+		<echo>打包完成！</echo>
+	</target>
+
+	<target name="deploy" depends="war" description="发布">
+		<copy todir="${env.tomcat_home}/webapps">
+			<fileset dir="${build.war}" includes="*.war" />
+		</copy>
+		<echo>已发布到Tomcat！</echo>
+	</target>
+
+
+
+	<target name="testenv" description="测试环境变量">
+		<echo>JAVA_HOME:${env.JAVA_HOME}</echo>
+		<echo>CLASSPATH:${env.CLASSPATH}</echo>
+		<echo>tomcat_home:${env.tomcat_home}</echo>
+	</target>
+
+
+</project>
