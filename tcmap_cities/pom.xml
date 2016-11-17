@@ -1,0 +1,187 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.seightday</groupId>
+  <artifactId>cities</artifactId>
+  <version>1.0.0</version>
+      <properties> 
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding> 
+    </properties> 
+    <dependencies>
+  	<dependency>
+  		<groupId>commons-io</groupId>
+  		<artifactId>commons-io</artifactId>
+  		<version>2.2</version>
+  	</dependency>
+  	  <dependency>
+  		<groupId>org.slf4j</groupId>
+  		<artifactId>slf4j-log4j12</artifactId>
+  		<version>1.7.5</version>
+  	</dependency>
+  		<dependency>
+		<groupId>com.h2database</groupId>
+		<artifactId>h2</artifactId>
+		<version>1.4.184</version>
+	</dependency>
+		<dependency>
+		<groupId>org.springframework</groupId>
+		<artifactId>spring</artifactId>
+		<version>2.5.6</version>
+	</dependency>
+	<dependency>
+	<groupId>org.codehaus.groovy</groupId>
+	<artifactId>groovy-all</artifactId>
+	<version>2.3.10</version>
+</dependency>
+	<dependency>
+	<groupId>org.jsoup</groupId>
+	<artifactId>jsoup</artifactId>
+	<version>1.8.3</version>
+</dependency>
+			<dependency>
+			<groupId>mysql</groupId>
+			<artifactId>mysql-connector-java</artifactId>
+			<version>5.1.30</version>
+			<scope>runtime</scope>
+		</dependency>
+  </dependencies>
+  <build>
+    <testResources>
+      <testResource>
+      <!-- 使用开发配置运行单元测试 -->
+        <directory>${basedir}\src\main\resources</directory>
+      </testResource>
+    </testResources>
+    <plugins>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <!-- 2.8.0-01 and later require maven-compiler-plugin 3.1 or higher -->
+        <version>3.1</version>
+        <configuration>
+          <compilerId>groovy-eclipse-compiler</compilerId>
+        </configuration>
+        <dependencies>
+          <dependency>
+            <groupId>org.codehaus.groovy</groupId>
+            <artifactId>groovy-eclipse-compiler</artifactId>
+            <version>2.9.1-01</version>
+          </dependency>
+          <!-- for 2.8.0-01 and later you must have an explicit dependency on groovy-eclipse-batch -->
+          <dependency>
+            <groupId>org.codehaus.groovy</groupId>
+            <artifactId>groovy-eclipse-batch</artifactId>
+            <version>2.3.7-01</version>
+          </dependency>
+        </dependencies>
+      </plugin>
+	<plugin>
+		<groupId>org.codehaus.mojo</groupId>
+		<artifactId>appassembler-maven-plugin</artifactId>
+		<configuration>
+			<repositoryLayout>flat</repositoryLayout>
+			<repositoryName>lib</repositoryName>
+			<configurationSourceDirectory>src/main/resources</configurationSourceDirectory>
+			<!-- Set the target configuration directory to be used in the bin scripts -->
+			<configurationDirectory>.</configurationDirectory>
+			<!-- Copy the contents from "/src/main/config" to the target configuration 
+				directory in the assembled application -->
+			<copyConfigurationDirectory>true</copyConfigurationDirectory>
+			<!-- Include the target configuration directory in the beginning of the 
+				classpath declaration in the bin scripts -->
+			<includeConfigurationDirectoryInClasspath>true</includeConfigurationDirectoryInClasspath>
+			<!-- set alternative assemble directory -->
+			<assembleDirectory>target/kaoqing</assembleDirectory>
+			<!-- Extra JVM arguments that will be included in the bin scripts -->
+			<!-- <extraJvmArguments>-Xms768m -Xmx768m -XX:PermSize=128m -XX:MaxPermSize=256m 
+				-XX:NewSize=192m -XX:MaxNewSize=384m </extraJvmArguments> -->
+			<!-- Generate bin scripts for windows and unix pr default -->
+			<platforms>
+				<platform>windows</platform>
+				<!-- <platform>unix</platform> -->
+			</platforms>
+			<programs>
+				<program>
+					<mainClass>com.seightday.kaoqing.KaoqingGroovy</mainClass>
+					<name>startup</name>
+				</program>
+			</programs>
+			<!-- prefix all bin files with "mycompany" -->
+			<binPrefix>startup</binPrefix>
+			<!-- <binFolder>.</binFolder> -->
+		</configuration>
+	</plugin>
+		  		<plugin>
+		  			<artifactId>maven-antrun-plugin</artifactId>
+		  			<executions>
+		  				<execution>
+		  					<phase>verify</phase>
+		  					<goals>
+		  						<goal>run</goal>
+		  					</goals>
+		  					<configuration>
+		  						<tasks>
+									<replace file="target/kaoqing/bin/startup.bat">
+  <replacetoken>:endInit</replacetoken>
+  <replacevalue><![CDATA[:endInit
+set CLASSPATH="%BASEDIR%"\jre\lib\dt.jar;"%BASEDIR%"\jre\lib\tools.jar;%CLASSPATH%
+set Path="%BASEDIR%"\jre\bin;c:\windows\system32]]></replacevalue>
+									</replace>
+									<replace file="target/kaoqing/bin/startup.bat">
+  <replacetoken>if %ERRORLEVEL% NEQ 0 goto error</replacetoken>
+  <replacevalue><![CDATA[exit
+if %ERRORLEVEL% NEQ 0 goto error]]></replacevalue>
+									</replace><!-- 由于添加更新功能，执行完成即退出cmd，而不是pause手动点击退出， -->
+									
+									<!-- 去掉版本号 -->
+									<replace file="target/kaoqing/bin/startup.bat">
+									  <replacetoken>${project.artifactId}-${project.version}</replacetoken>
+									  <replacevalue>${project.artifactId}</replacevalue>
+									</replace>
+									<move file="target/kaoqing/lib/${project.artifactId}-${project.version}.jar" tofile="target/kaoqing/lib/${project.artifactId}.jar"/>
+																	
+									  <copy todir="target/kaoqing/jre">
+									    <fileset dir="C:/Program Files (x86)/Java/jre1.8.0_20_win32"/>
+									  </copy>
+									  
+		  						</tasks>
+		  					</configuration>
+		  				</execution>
+		  			</executions>
+		  		
+		  		</plugin>
+</plugins>
+    <pluginManagement>
+    	<plugins>
+    		<!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
+    		<plugin>
+    			<groupId>org.eclipse.m2e</groupId>
+    			<artifactId>lifecycle-mapping</artifactId>
+    			<version>1.0.0</version>
+    			<configuration>
+    				<lifecycleMappingMetadata>
+    					<pluginExecutions>
+    						<pluginExecution>
+    							<pluginExecutionFilter>
+    								<groupId>
+    									org.apache.maven.plugins
+    								</groupId>
+    								<artifactId>
+    									maven-compiler-plugin
+    								</artifactId>
+    								<versionRange>[3.1,)</versionRange>
+    								<goals>
+    									<goal>compile</goal>
+    									<goal>testCompile</goal>
+    								</goals>
+    							</pluginExecutionFilter>
+    							<action>
+    								<ignore></ignore>
+    							</action>
+    						</pluginExecution>
+    					</pluginExecutions>
+    				</lifecycleMappingMetadata>
+    			</configuration>
+    		</plugin>
+    	</plugins>
+    </pluginManagement>
+  </build>
+</project>
