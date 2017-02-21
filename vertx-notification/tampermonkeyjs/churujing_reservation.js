@@ -25,12 +25,21 @@
 //</div>
 var column=4;
     var ids=[
-440306000000
-];
+440303000000,
+440303000001,
+440304000000,
+440305000000,
+440306000000,
+440306000001,
+440307000000
 
+];
+var idx=0,max=ids.length;
     setInterval(function(){
         
-        $('#receivepoints span[receivepointsid="'+ids[0]+'"]').click();
+        $('#receivepoints span[receivepointsid="'+ids[idx]+'"]').click();
+        idx++;
+        if(idx==max){idx=0;}
         setTimeout(function(){
             for(var i=1;i<=7;i++){
                 var s=$('#row'+i+column+' span').text();
