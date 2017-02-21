@@ -14,9 +14,9 @@ public class Notification {
 	private static final Logger log = LoggerFactory.getLogger(Notification.class);
 
 	//跨域问题 http://www.cnblogs.com/amylis_chen/p/4703735.html
-	@GET("/sendEmail")
+	@GET("/sendEmail")//缺少参数是可能出现Resource Not Found的错误
 	public void sendEmail(@Param("content") String content,@Param("callback") String callback, RoutingContext rc) {
-
+		log.info("content is {},callback is {}",content,callback);
 		rc.vertx().eventBus().send(MailService.sendMail, content, reply->{
 			//String result=callback+"({errCode:\"00\", errMsg:\"success\"})";
 			String result= (String) reply.result().body();
@@ -24,6 +24,7 @@ public class Notification {
 			rc.response().putHeader("Content-Length",String.valueOf(result.length()));
 			rc.response().write(result);
 			rc.next();
+			log.info("response ...");
 		});
 	}
 
