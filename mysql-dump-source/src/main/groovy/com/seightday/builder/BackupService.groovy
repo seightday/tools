@@ -1,80 +1,156 @@
 package com.seightday.builder
 
 import groovy.util.logging.Slf4j
+import org.apache.commons.io.FileUtils
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.CommandLineRunner
 import org.springframework.stereotype.Component
 
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+
 @Slf4j
 @Component
 class BackupService implements CommandLineRunner{
-	
-	@Value('${db.password}')
-	String dbPwd
-	
+
 	@Value('${db.username}')
 	String dbUser
+
+	@Value('${db.password}')
+	String dbPwd
+
+	@Value('${db.name}')
+	String dbName
+
+	@Value('${db.host}')
+	String dbHost
+	
 
 	@Value('${part.data.tables}')
 	String[] partDataTables
 	@Value('${ignore.tables}')
 	String ignoreTables
-	@Value('${db.name}')
-	String dbName
-	@Value('${db.host}')
-	String dbHost
-	@Value('${sql.dir}')
-	String sqlDir
-	@Value('${sql.source.dir}')
-	String sqlSourceDir
+
 	@Value('${dump.exe}')
 	String dumpExe
 	@Value('${dump.params}')
 	String dumpParams
+	@Value('${ignore.views}')
+	boolean igoreViews
+	@Value('${mysql.exe}')
+	String mysqlExe
+	@Value('${output.dir}')
+	String outputDir
+	@Value('${dump.execute}')
+	boolean dumpExecute
+
+	@Value('${db.source.username}')
+	String dbSourceUser
+
+	@Value('${db.source.password}')
+	String dbSourcePwd
+
+	@Value('${db.source.name}')
+	String dbSourceName
+
+	@Value('${db.source.host}')
+	String dbSourceHost
 
 	@Override
 	void run(String... arg0) throws Exception {
-		//mysqldump不要锁表，不生成注释
+		outputDir+='/'+LocalDate.now().format(DateTimeFormatter.ofPattern('yyyyMMdd'))
+
+		def echoBatDateTime = 'echo %date:~0,10% %time:~0,8%'
+		def dumpFinished='mshta vbscript:msgbox("dump finish",36,"dump finish")(window.close)'
+		def sourceFinished='mshta vbscript:msgbox("source finish",36,"source finish")(window.close)'
+
+		List<String> dumpBatCmd=[]
+		dumpBatCmd.add(echoBatDateTime)
+
+		List<String> viewList=[]
+		if (igoreViews){
+			def command="${mysqlExe} -u${dbUser} -p${dbPwd} -h ${dbHost} INFORMATION_SCHEMA --skip-column-names -e  \"select table_name from tables where table_type = 'VIEW' and table_schema = '${dbName}'\""
+			def process = command.execute()
+			viewList = printProcess(process)
+			log.info('viewList is {}',viewList)
+		}
+
 		//mysqldump --help
 		StringBuilder sb=new StringBuilder();
-		if (ignoreTables){
+		if (ignoreTables){//TODO 生成忽略的表的结构 --no-data
 			ignoreTables.split(',').each {
 				sb.append(" --ignore-table=${dbName}.$it ")
 			}
 		}
+
+		if(viewList){
+			viewList.each {
+				sb.append(" --ignore-table=${dbName}.$it ")
+			}
+		}
+
 		partDataTables.each {
 			def split=it.split('##')
 			sb.append(" --ignore-table=${dbName}.${split[0]} ")
 		}
 
-		def dump="$dumpExe $dumpParams -u$dbUser -p$dbPwd -h $dbHost $dbName $sb > $sqlDir/all.sql"
-		println(dump)
-		//mysqldump -t -uroot -pwtsd123 -h 192.168.0.185 sms --tables tb_sale_detail > C:\Users\Administrator\Desktop\saledetail.sql//只导指定表的数据，会锁表
-//		dump.execute()
-//		printProcess(dump.execute())
-		//mysqldump -uoms -poms -h 192.168.0.198 oms --ignore-table=oms.tb_clear_paydata_detail --ignore-table=oms.tb_biz_refund_record > C:\Users\Administrator\Desktop\data\ignore.sql
-//		print(ignoreTables)
-//		mysqldump -uoms -poms -h 192.168.0.198 oms tb_biz_refund_record --where="applytime>'2017-04-14 17:19:41'" > C:\Users\Administrator\Desktop\data\tb_biz_refund_record.sql
+		def all="$dumpExe $dumpParams -u$dbUser -p$dbPwd -h $dbHost $dbName $sb > $outputDir/all.sql"
+		dumpBatCmd.add(all.toString())
+		dumpBatCmd.add(echoBatDateTime)
+
 		partDataTables.each {
 			def split=it.split('##')
-			def s="$dumpExe $dumpParams -u$dbUser -p$dbPwd -h $dbHost $dbName ${split[0]} --where=\"${split[1]}\" > $sqlDir/${split[0]}.sql"
-			println(s)
-//			s.execute()
-//			printProcess(s.execute())
+			def cmd="$dumpExe $dumpParams -u$dbUser -p$dbPwd -h $dbHost $dbName ${split[0]} --where=\"${split[1]}\" > $outputDir/${split[0]}.sql"
+			dumpBatCmd.add(cmd.toString())
+			dumpBatCmd.add(echoBatDateTime)
 		}
 
-		println("source $sqlSourceDir/all.sql")
+		dumpBatCmd.add(dumpFinished)
+		dumpBatCmd.add('pause')
+
+		dumpBatCmd.each {
+			println(it)
+		}
+
+		def dumpBat = "${outputDir}/dump.bat"
+		FileUtils.writeLines(new File(dumpBat),dumpBatCmd)
+		if (dumpExecute){
+			"cmd /c start ${dumpBat}".execute()
+		}
+
+
+		List<String> sourceBatCmd=[]
+		sourceBatCmd.add(echoBatDateTime)
+		//mysql --verbose 可在bat中输出mysql的命令日志，但是出现造成mysql进程无反应的情况
+		sourceBatCmd.add("${mysqlExe} -u${dbSourceUser} -p${dbSourcePwd} -h ${dbSourceHost} ${dbSourceName} -e \"source ${outputDir}/all.sql\"")
+		sourceBatCmd.add(echoBatDateTime)
+
 		partDataTables.each {
-			println("source $sqlSourceDir/${it.split('##')[0]}.sql")
+			sourceBatCmd.add("${mysqlExe} -u${dbSourceUser} -p${dbSourcePwd} -h ${dbSourceHost} ${dbSourceName} -e \"source $outputDir/${it.split('##')[0]}.sql\"")
+			sourceBatCmd.add(echoBatDateTime)
 		}
-
-
-
-
+		sourceBatCmd.add(sourceFinished)
+		sourceBatCmd.add('pause')
+		sourceBatCmd.each {
+			println(it)
+		}
+		FileUtils.writeLines(new File("${outputDir}/source.bat"),sourceBatCmd)
 
 	}
-	
 
+
+	List<String> printProcess(Process p){
+		log.info("printProcess")
+		List<String> resultList=new ArrayList<>()
+		def line=null
+
+		def reader = new BufferedReader(new InputStreamReader(p.getInputStream(), 'gbk'))
+		while((line=reader.readLine())!=null){
+			resultList.add(line)
+			log.info(line)
+		}
+		resultList
+	}
 
 	
 	
