@@ -9,6 +9,10 @@ import org.springframework.stereotype.Component
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
+/**
+ * 由于权限问题，视图结构可能无法导出
+ * 建议先用有权限的账号把结构导出，本工具主要用于导数据
+ */
 @Slf4j
 @Component
 class BackupService implements CommandLineRunner{
@@ -30,6 +34,8 @@ class BackupService implements CommandLineRunner{
 	String[] partDataTables
 	@Value('${ignore.tables}')
 	String ignoreTables
+	@Value('${ignore.tables.all:false}')
+	boolean ignoreTablesAll
 
 	@Value('${dump.exe}')
 	String dumpExe
@@ -95,8 +101,10 @@ class BackupService implements CommandLineRunner{
 		}
 
 		def all="$dumpExe $dumpParams -u$dbUser -p$dbPwd -h $dbHost $dbName $sb > $outputDir/all.sql"
-		dumpBatCmd.add(all.toString())
-		dumpBatCmd.add(echoBatDateTime)
+		if (!ignoreTablesAll){
+			dumpBatCmd.add(all.toString())
+			dumpBatCmd.add(echoBatDateTime)
+		}
 
 		partDataTables.each {
 			def split=it.split('##')
