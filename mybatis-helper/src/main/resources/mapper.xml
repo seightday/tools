@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mapper">
+  <select id="find" resultType="Map">
+		SELECT *
+		FROM tb_user a
+		<where>
+			
+			<if test="name != null">
+				AND a.name LIKE concat('%',#{name},'%')
+			</if>
+			<if test="mobile != null">
+				AND a.mobile = #{mobile}
+			</if>
+		</where>
+  </select>
+  <update id="update">
+  	UPDATE tb_user set password=#{password} WHERE mobile =#{mobile}
+  </update>
+</mapper>
